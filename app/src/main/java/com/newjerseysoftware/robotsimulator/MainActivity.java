@@ -14,6 +14,9 @@ import android.widget.LinearLayout;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -36,9 +39,10 @@ public class MainActivity extends AppCompatActivity {
     public static final MediaType JSON
             = MediaType.get("application/json; charset=utf-8");
     private String networkAddress = "";
+    private RobotWebSocketListener listen;
 
     private void webSocketConnect() {
-        RobotWebSocketListener listen = new RobotWebSocketListener();
+        listen = new RobotWebSocketListener(buttons);
         Request request = new Request.Builder()
                 .url("ws://"+networkAddress+":2867")
                 .header("User-Agent", "OkHttp Headers.java")
@@ -55,7 +59,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         try {
-            networkAddress = env("home.network.ip",this.getBaseContext());
+            //networkAddress = env("home.network.ip",this.getBaseContext());
+            networkAddress = env("production.carrier.ip",this.getBaseContext());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -115,9 +120,28 @@ public class MainActivity extends AppCompatActivity {
         };
     }
 
+    private static JSONObject jsonConvert(String json){
+        try {
+            JSONObject jo = new JSONObject(json);
+            return jo;
+        } catch (Throwable t) {
+            Log.e("JSONObject Error:", "JSON MALFORMED: \"" + json + "\"");
+        }
+        return null;
+    }
+
     //https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent#status_codes
-    private final static class RobotWebSocketListener extends WebSocketListener {
+    private final class RobotWebSocketListener extends WebSocketListener {
         //{"active":true,"message":"{\"message\":\"hello from verizon carrier ip\"}","activeArea":8,"Position":{"x":"2","y":"1"},"gridBlock":0,"bounds":4}
+
+        protected int pos = 20;
+        protected ArrayList<Button> buttons;
+
+        RobotWebSocketListener(ArrayList<Button> buttons ){
+            super();
+            this.buttons = buttons;
+        }
+
         @Override
         public void onOpen(WebSocket ws, Response res) {
             ws.send("hello from Android - Feed me");
@@ -133,7 +157,36 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onMessage(WebSocket ws, String txt) {
-            Log.i("onMessageText: " , txt);
+            //Log.i("onMessageText: " , txt);
+            JSONObject obj = jsonConvert(txt);
+            if(obj != null){
+                try {
+                    if(obj.has("Position")) {
+
+                        JSONObject position = obj.getJSONObject("Position");
+
+                        String x = position.getString("x");
+                        String y = position.getString("y");
+
+                        pos = convertXyFromUi(x, y) - 1;
+
+                        if(pos >= 0 && pos < 25) {
+                            Log.d("pos", "" + pos);
+                            Button selectedButton = buttons.get(pos);
+                            for (int i = 0; i < buttons.size(); i++) {
+                                Button b = buttons.get(i);
+                                b.setBackgroundColor(getResources().getColor(R.color.black));
+                                b.setBackgroundResource(R.drawable.button);
+                            }
+                            selectedButton.setBackgroundColor(getResources().getColor(R.color.purple_700));
+                        }
+                    }
+
+                    //Log.i("Position:","x: " + x + " | y:" + y);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
         }
         @Override
         public void onMessage(WebSocket webSocket, ByteString bytes) {
@@ -153,7 +206,66 @@ public class MainActivity extends AppCompatActivity {
         }
         @Override
         public void onFailure(WebSocket webSocket, Throwable t, Response resp) {
-            Log.i("ws failure: " , t.getMessage() + " response:"+resp.toString());
+            Log.i("ws failure: " , t.getMessage());
+        }
+    }
+
+
+    private static int convertXyFromUi(String x, String y){
+        String in = x + y;
+        switch (in){
+            case "04":
+                return 1;
+            case "14":
+                return 2;
+            case "24":
+                return 3;
+            case "34":
+                return 4;
+            case "44":
+                return 5;
+            case "03":
+                return 6;
+            case "13":
+                return 7;
+            case "23":
+                return 8;
+            case "33":
+                return 9;
+            case "43":
+                return 10;
+            case "02":
+                return 11;
+            case "12":
+                return 12;
+            case "22":
+                return 13;
+            case "32":
+                return 14;
+            case "42":
+                return 15;
+            case "01":
+                return 16;
+            case "11":
+                return 17;
+            case "21":
+                return 18;
+            case "31":
+                return 19;
+            case "41":
+                return 20;
+            case "00":
+                return 21;
+            case "10":
+                return 22;
+            case "20":
+                return 23;
+            case "30":
+                return 24;
+            case "40":
+                return 25;
+            default:
+                return 0;
         }
     }
 
