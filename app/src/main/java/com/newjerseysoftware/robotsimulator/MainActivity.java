@@ -5,7 +5,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.os.Bundle;
-import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,8 +20,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Properties;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -32,6 +29,9 @@ import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 import okio.ByteString;
 
+/**
+ * Created by Burt Snyder on 6/3/21.
+ */
 public class MainActivity extends AppCompatActivity {
 
     private ArrayList<Button> buttons = new ArrayList<Button>();
@@ -59,7 +59,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         try {
-            //networkAddress = env("home.network.ip",this.getBaseContext());
             networkAddress = env("production.carrier.ip",this.getBaseContext());
         } catch (IOException e) {
             e.printStackTrace();
@@ -130,9 +129,7 @@ public class MainActivity extends AppCompatActivity {
         return null;
     }
 
-    //https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent#status_codes
     private final class RobotWebSocketListener extends WebSocketListener {
-        //{"active":true,"message":"{\"message\":\"hello from verizon carrier ip\"}","activeArea":8,"Position":{"x":"2","y":"1"},"gridBlock":0,"bounds":4}
 
         protected int pos = 20;
         protected ArrayList<Button> buttons;
@@ -145,19 +142,10 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onOpen(WebSocket ws, Response res) {
             ws.send("hello from Android - Feed me");
-
-//            new Timer().scheduleAtFixedRate(new TimerTask(){
-//                @Override
-//                public void run(){
-//                    ws.send("hello from Android - Feed me");
-//                }
-//            },0,5000);
-//          ws.close(1000, "ws connection closed");
         }
 
         @Override
         public void onMessage(WebSocket ws, String txt) {
-            //Log.i("onMessageText: " , txt);
             JSONObject obj = jsonConvert(txt);
             if(obj != null){
                 try {
@@ -182,7 +170,6 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
 
-                    //Log.i("Position:","x: " + x + " | y:" + y);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
