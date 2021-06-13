@@ -12,6 +12,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TableLayout;
 import android.widget.TableRow;
+import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -36,22 +37,24 @@ public class MainActivity extends AppCompatActivity {
 
     private ArrayList<Button> buttons = new ArrayList<Button>();
     private OkHttpClient client = new OkHttpClient();
-    public static final MediaType JSON
-            = MediaType.get("application/json; charset=utf-8");
     private String networkAddress = "";
     private RobotWebSocketListener listen;
+    public WebSocket ws;
+    public CharSequence alert;
+    public String ObstacleCoordinate = "99";
+
+    public String posx = "";
+    public String posy = "";
 
     private void webSocketConnect() {
         listen = new RobotWebSocketListener(buttons);
         Request request = new Request.Builder()
-                .url("ws://"+networkAddress+":2867")
-                .header("User-Agent", "OkHttp Headers.java")
-                .addHeader("Accept", "application/json; q=0.5")
-                .addHeader("Accept", "application/vnd.github.v3+json")
+                .url("ws://"+networkAddress)
                 .build();
 
-        WebSocket ws = client.newWebSocket(request, listen);
+        ws = client.newWebSocket(request, listen);
         client.dispatcher().executorService().shutdown();
+        //ws.send("");
     }
 
 
@@ -109,12 +112,26 @@ public class MainActivity extends AppCompatActivity {
     View.OnClickListener handleOnClick(final Button button, int count) {
         return new View.OnClickListener() {
             public void onClick(View v) {
-                for(int i=0;i<buttons.size();i++){
-                    Button b = buttons.get(i);
-                    b.setBackgroundColor(getResources().getColor(R.color.black));
-                    b.setBackgroundResource(R.drawable.button);
+                if(ws != null) {
+                    ObstacleCoordinate = getUiFromCount(button.getId());
+                    ws.send("{\"testOne\":{\"x\":\""+ ObstacleCoordinate.charAt(0) +
+                            "\",\"y\":\""+ObstacleCoordinate.charAt(1)+"\"}}");
+                }else{
+                    alert = "connect to socket first";
+                    Toast.makeText(getApplicationContext(), alert, Toast.LENGTH_SHORT).show();
                 }
-                button.setBackgroundColor(getResources().getColor(R.color.purple_700));
+//                for(int i=0;i<buttons.size();i++){
+//                    Button b = buttons.get(i);
+//                    b.setBackgroundColor(getResources().getColor(R.color.black));
+//                    b.setBackgroundResource(R.drawable.button);
+//                }
+//                button.setBackgroundColor(getResources().getColor(R.color.purple_700));
+                //for test
+                button.setBackgroundColor(getResources().getColor(R.color.obstacle));
+                if(ws != null) {
+                    //alert = "obstacle set: don't click again";
+                    //Toast.makeText(getApplicationContext(), alert, Toast.LENGTH_SHORT).show();
+                }
             }
         };
     }
@@ -124,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
             JSONObject jo = new JSONObject(json);
             return jo;
         } catch (Throwable t) {
-            Log.e("JSONObject Error:", "JSON MALFORMED: \"" + json + "\"");
+            Log.e("JSONObject Error:", "JSON MALFORMED: " + json);
         }
         return null;
     }
@@ -141,11 +158,11 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onOpen(WebSocket ws, Response res) {
-            ws.send("hello from Android - Feed me");
         }
 
         @Override
         public void onMessage(WebSocket ws, String txt) {
+
             JSONObject obj = jsonConvert(txt);
             if(obj != null){
                 try {
@@ -153,20 +170,34 @@ public class MainActivity extends AppCompatActivity {
 
                         JSONObject position = obj.getJSONObject("Position");
 
-                        String x = position.getString("x");
-                        String y = position.getString("y");
-
-                        pos = convertXyFromUi(x, y) - 1;
+                        posx = position.getString("x");
+                        posy = position.getString("y");
+                        pos = convertXyFromUi(posx, posy) - 1;
 
                         if(pos >= 0 && pos < 25) {
-                            Log.d("pos", "" + pos);
+                            //Log.d("pos", "" + pos);
                             Button selectedButton = buttons.get(pos);
                             for (int i = 0; i < buttons.size(); i++) {
                                 Button b = buttons.get(i);
                                 b.setBackgroundColor(getResources().getColor(R.color.black));
                                 b.setBackgroundResource(R.drawable.button);
                             }
-                            selectedButton.setBackgroundColor(getResources().getColor(R.color.purple_700));
+                            if(ObstacleCoordinate.equals(getUiFromCount(selectedButton.getId()))){
+                                //obstacle collision
+                                Log.d("collision: ", "pos:" + pos);
+                                ws.send("{\"collision\":{\"x\":\""+ ObstacleCoordinate.charAt(0) +
+                                        "\",\"y\":\""+ObstacleCoordinate.charAt(1)+"\"}}");
+                                selectedButton.setBackgroundColor(getResources().getColor(R.color.obstacle));
+                                //ObstacleCoordinate = "99";//reset
+                            }else {
+                                selectedButton.setBackgroundColor(getResources().getColor(R.color.purple_700));
+                                Log.d("ObstacleCorrd: " , ObstacleCoordinate);
+                            }
+
+                        }
+
+                        if(pos == 24){
+                            ObstacleCoordinate = "99";
                         }
                     }
 
@@ -253,6 +284,63 @@ public class MainActivity extends AppCompatActivity {
                 return 25;
             default:
                 return 0;
+        }
+    }
+
+    private static String getUiFromCount(int in){
+        switch (in){
+            case 1:
+                return "04";
+            case 2:
+                return "14";
+            case 3:
+                return "24";
+            case 4:
+                return "34";
+            case 5:
+                return "44";
+            case 6:
+                return "03";
+            case 7:
+                return "13";
+            case 8:
+                return "23";
+            case 9:
+                return "33";
+            case 10:
+                return "43";
+            case 11:
+                return "02";
+            case 12:
+                return "12";
+            case 13:
+                return "22";
+            case 14:
+                return "32";
+            case 15:
+                return "42";
+            case 16:
+                return "01";
+            case 17:
+                return "11";
+            case 18:
+                return "21";
+            case 19:
+                return "31";
+            case 20:
+                return "41";
+            case 21:
+                return "00";
+            case 22:
+                return "10";
+            case 23:
+                return "20";
+            case 24:
+                return "30";
+            case 25:
+                return "40";
+            default:
+                return "";
         }
     }
 
